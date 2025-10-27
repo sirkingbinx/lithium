@@ -24,3 +24,6 @@ A basic Log viewing utility, with some more special features:
 - It may suggest fixes if the error is a common mistake, like a misspelling of a type.
 - It assigns errors to icons, making it much easier to scroll through your log.
 - It provides metrics for the number of each message type (message, warning, errors).
+
+> [!NOTE]
+> Lithium is still in development.
