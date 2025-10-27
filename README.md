@@ -8,6 +8,7 @@ Lithium is a suite of tools for Roblox game development. It includes:
 - [Projects](#projects)
 - [Tools](#tools)
     - [Pentium Ion](#pentium-ion)
+    - [Log](#log)
 
 ## Projects
 Lithium is actually seperated into two projects, which you can see below:
