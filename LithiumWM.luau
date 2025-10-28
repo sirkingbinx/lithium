@@ -311,6 +311,7 @@ export type LithiumWindow = {
 	onOpen: () -> (),
 	onMinimized: () -> (),
 	onMaximized: () -> (),
+	onClose: () -> (boolean),
 	
 	SetContent: (f: Frame) -> (Frame),
 
@@ -430,6 +431,8 @@ local function Minimize(window: LithiumWindow)
 	
 	if data.minimized or (not window.allowMinimizing) then return end
 	
+	window.onMinimized()
+
 	local tab = CreateWMAssets.Tab()
 	tab.TitleText.Text = window.title
 	
@@ -447,6 +450,8 @@ end
 
 local function Maximize(window: LithiumWindow)
 	if (not window.allowMaximizing) then return end
+
+	window.onMaximized()
 	
 	if window.__LITHIUMDATA.maximized then
 		if window.__LITHIUMDATA.fpos and window.__LITHIUMDATA.fscale then
@@ -522,7 +527,11 @@ function LithiumWM.CreateWindow(windowTitle: string, openByDefault: boolean?, in
 	end
 	
 	window.Close = function()
-		windowObj:Destroy()
+		if window.onClose 
+		and typeof(window.onClose) == "function"
+		and window.onClose() ~= false then
+			windowObj:Destroy()
+		end
 	end
 	
 	window.Resize = function(size: UDim2)

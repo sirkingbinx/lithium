@@ -9,6 +9,8 @@ Lithium is a suite of tools for Roblox game development. It includes:
 - [Tools](#tools)
     - [Pentium Ion](#pentium-ion)
     - [Log](#log)
+- [Docs](DOCS.md#docs)
+    - [LithiumWM](DOCS.md#lithiumwm)
 
 ## Projects
 Lithium is actually seperated into two projects, which you can see below:
@@ -25,5 +27,4 @@ A basic Log viewing utility, with some more special features:
 - It assigns errors to icons, making it much easier to scroll through your log.
 - It provides metrics for the number of each message type (message, warning, errors).
 
-> [!NOTE]
-> Lithium is still in development.
+## Docs
