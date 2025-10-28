@@ -281,6 +281,54 @@ local CreateWMAssets = {
 	end,
 }
 
+local LithiumScriptConnection = {
+	Disconnect = function(self)
+		self.fn = nil
+		self = nil
+	end,
+
+	__SafeCall = function(self, ...)
+		if self.fn and typeof(self.fn) == "function" then
+			self.fn(...)
+		end
+
+		if self.once then
+			self:Disconnect()
+		end
+	end,
+}
+
+local LithiumScriptSignal = {
+	__All = {}
+
+	__Call = function(self)
+		for _, s in __All do
+			s:__SafeCall()
+		end
+	end,
+
+	Connect = function(self, f: () -> ()): LithiumScriptConnection
+		local ScriptConnection = { }
+		setmetatable(ScriptConnection, LithiumScriptConnection)
+		
+		ScriptConnection.fn = f
+		table.insert(self._All, ScriptConnection)
+
+		return ScriptConnection
+	end,
+
+	Once = function(self, f: () -> ()): LithiumScriptConnection
+		local ScriptConnection = { }
+		setmetatable(ScriptConnection, LithiumScriptConnection)
+		
+		ScriptConnection.fn = f
+		ScriptConnection.once = true
+		table.insert(self._All, ScriptConnection)
+
+		return ScriptConnection
+	end,
+}
+
 export type LithiumButton = {
 	-- data
 	name: string,
@@ -308,9 +356,9 @@ export type LithiumWindow = {
 	frame: Frame,
 	open: boolean,
 
-	onOpen: () -> (),
-	onMinimized: () -> (),
-	onMaximized: () -> (),
+	onOpen: LithiumScriptSignal,
+	onMinimized: LithiumScriptSignal,
+	onMaximized: LithiumScriptSignal,
 	onClose: () -> (boolean),
 	
 	SetContent: (f: Frame) -> (Frame),
@@ -431,7 +479,7 @@ local function Minimize(window: LithiumWindow)
 	
 	if data.minimized or (not window.allowMinimizing) then return end
 	
-	window.onMinimized()
+	window.onMinimized:__Call()
 
 	local tab = CreateWMAssets.Tab()
 	tab.TitleText.Text = window.title
@@ -451,7 +499,7 @@ end
 local function Maximize(window: LithiumWindow)
 	if (not window.allowMaximizing) then return end
 
-	window.onMaximized()
+	window.onMaximized:__Call()
 	
 	if window.__LITHIUMDATA.maximized then
 		if window.__LITHIUMDATA.fpos and window.__LITHIUMDATA.fscale then
@@ -508,6 +556,7 @@ function LithiumWM.CreateWindow(windowTitle: string, openByDefault: boolean?, in
 	
 	window.Open = function()
 		window.__LITHIUMDATA.window.Visible = true
+		window.onOpen:__Call()
 		
 		if window.__LITHIUMDATA.minTab then
 			window.__LITHIUMDATA.minTab:Destroy()
