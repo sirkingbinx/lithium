@@ -8,6 +8,87 @@ local LithiumWM = {}
 local TextService = game:GetService("TextService")
 local UserInputService = game:GetService("UserInputService")
 
+--[[
+MIT License
+
+Copyright (c) 2014-2025 James Onnen (Quenty)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+]]
+
+--- Lua-side duplication of the API of events on Roblox objects.
+-- Signals are needed for to ensure that for local events objects are passed by
+-- reference rather than by value where possible, as the BindableEvent objects
+-- always pass signal arguments by value, meaning tables will be deep copied.
+-- Roblox's deep copy method parses to a non-lua table compatable format.
+-- @classmod Signal
+
+local Signal = {}
+Signal.__index = Signal
+Signal.ClassName = "Signal"
+
+--- Constructs a new signal.
+-- @constructor Signal.new()
+-- @treturn Signal
+function Signal.new()
+	local self = setmetatable({}, Signal)
+
+	self._bindableEvent = Instance.new("BindableEvent")
+	self._argData = nil
+	self._argCount = nil -- Prevent edge case of :Fire("A", nil) --> "A" instead of "A", nil
+
+	return self
+end
+
+--- Fire the event with the given arguments. All handlers will be invoked. Handlers follow
+-- Roblox signal conventions.
+-- @param ... Variable arguments to pass to handler
+-- @treturn nil
+function Signal:Fire(...)
+	self._argData = {...}
+	self._argCount = select("#", ...)
+	self._bindableEvent:Fire()
+	self._argData = nil
+	self._argCount = nil
+end
+
+--- Connect a new handler to the event. Returns a connection object that can be disconnected.
+-- @tparam function handler Function handler called with arguments passed when `:Fire(...)` is called
+-- @treturn Connection Connection object that can be disconnected
+function Signal:Connect(handler)
+	if not (type(handler) == "function") then
+		error(("connect(%s)"):format(typeof(handler)), 2)
+	end
+
+	return self._bindableEvent.Event:Connect(function()
+		handler(unpack(self._argData, 1, self._argCount))
+	end)
+end
+
+--- Wait for fire to be called, and return the arguments it was given.
+-- @treturn ... Variable arguments from connection
+function Signal:Wait()
+	self._bindableEvent.Event:Wait()
+	assert(self._argData, "Missing arg data, likely due to :TweenSize/Position corrupting threadrefs.")
+	return unpack(self._argData, 1, self._argCount)
+end
+
+--- Disconnects all connected events to the signal. Voids the signal as unusable.
+-- @treturn nil
+function Signal:Destroy()
+	if self._bindableEvent then
+		self._bindableEvent:Destroy()
+		self._bindableEvent = nil
+	end
+
+	self._argData = nil
+	self._argCount = nil
+end
+
 local CreateWMAssets = {
 	MenuButton = function()
 		-- gui2lua 3.2
@@ -36,10 +117,10 @@ local CreateWMAssets = {
 
 		UIListLayout.Parent = ItemsHolder
 		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		
+
 		return MenuButton
 	end,
-	
+
 	MenuItemSlot = function()
 		local MenuItemSlot = Instance.new("TextButton")
 		local ItemText = Instance.new("TextLabel")
@@ -85,10 +166,10 @@ local CreateWMAssets = {
 		ItemKeybinds.TextSize = 14
 		ItemKeybinds.TextStrokeTransparency = 0.750
 		ItemKeybinds.TextXAlignment = Enum.TextXAlignment.Right
-		
+
 		return MenuItemSlot
 	end,
-	
+
 	LithiumWindow = function()
 		local LithiumWindow = Instance.new("Frame")
 		local Scaling = Instance.new("Frame")
@@ -103,12 +184,12 @@ local CreateWMAssets = {
 		local MenuButtons = Instance.new("Frame")
 		local UIListLayout = Instance.new("UIListLayout")
 		local WindowTitle = Instance.new("TextLabel")
-		
+
 		local TopbarMove = Instance.new("UIDragDetector")
 		TopbarMove.Parent = LithiumWindow
 		TopbarMove.Name = "TopbarMove"
 		TopbarMove.BoundingUI = Topbar
-		
+
 		LithiumWindow.Name = "LithiumWindow"
 		LithiumWindow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 		LithiumWindow.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -147,25 +228,25 @@ local CreateWMAssets = {
 		YScale.BorderSizePixel = 0
 		YScale.Position = UDim2.new(0, 0, 1, -5)
 		YScale.Size = UDim2.new(1, -5, 0, 5)
-		
+
 		local csp = Instance.new("UIDragDetector")
 		csp.Parent = CornerScalePoint
 		csp.Name = "CornerScale"
 		csp.BoundingUI = LithiumWindow
 		csp.DragStyle = Enum.UIDragDetectorDragStyle.Scriptable
-		
+
 		local dd = Instance.new("UIDragDetector")
 		dd.Parent = XScale
 		dd.Name = "Scaler"
 		dd.BoundingUI = LithiumWindow
 		dd.DragStyle = Enum.UIDragDetectorDragStyle.Scriptable
-		
+
 		local dd2 = Instance.new("UIDragDetector")
 		dd2.Parent = YScale
 		dd2.Name = "Scaler"
 		dd2.BoundingUI = LithiumWindow
 		dd2.DragStyle = Enum.UIDragDetectorDragStyle.Scriptable
-		
+
 		Content.Name = "Content"
 		Content.Parent = LithiumWindow
 		Content.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
@@ -245,10 +326,10 @@ local CreateWMAssets = {
 		WindowTitle.TextColor3 = Color3.fromRGB(170, 170, 170)
 		WindowTitle.TextSize = 14
 		WindowTitle.TextXAlignment = Enum.TextXAlignment.Left
-		
+
 		return LithiumWindow
 	end,
-	
+
 	Tab = function()
 		local Tab = Instance.new("TextButton")
 		local TitleText = Instance.new("TextLabel")
@@ -276,56 +357,8 @@ local CreateWMAssets = {
 		TitleText.TextColor3 = Color3.fromRGB(170, 170, 170)
 		TitleText.TextSize = 16.000
 		TitleText.TextXAlignment = Enum.TextXAlignment.Left
-		
+
 		return Tab
-	end,
-}
-
-local LithiumScriptConnection = {
-	Disconnect = function(self)
-		self.fn = nil
-		self = nil
-	end,
-
-	__SafeCall = function(self, ...)
-		if self.fn and typeof(self.fn) == "function" then
-			self.fn(...)
-		end
-
-		if self.once then
-			self:Disconnect()
-		end
-	end,
-}
-
-local LithiumScriptSignal = {
-	__All = {}
-
-	__Call = function(self)
-		for _, s in __All do
-			s:__SafeCall()
-		end
-	end,
-
-	Connect = function(self, f: () -> ()): LithiumScriptConnection
-		local ScriptConnection = { }
-		setmetatable(ScriptConnection, LithiumScriptConnection)
-		
-		ScriptConnection.fn = f
-		table.insert(self._All, ScriptConnection)
-
-		return ScriptConnection
-	end,
-
-	Once = function(self, f: () -> ()): LithiumScriptConnection
-		local ScriptConnection = { }
-		setmetatable(ScriptConnection, LithiumScriptConnection)
-		
-		ScriptConnection.fn = f
-		ScriptConnection.once = true
-		table.insert(self._All, ScriptConnection)
-
-		return ScriptConnection
 	end,
 }
 
@@ -333,7 +366,7 @@ export type LithiumButton = {
 	-- data
 	name: string,
 	keybinds: { Enum.KeyCode },
-	
+
 	-- events
 	onClick: () -> (),
 
@@ -356,11 +389,11 @@ export type LithiumWindow = {
 	frame: Frame,
 	open: boolean,
 
-	onOpen: LithiumScriptSignal,
-	onMinimized: LithiumScriptSignal,
-	onMaximized: LithiumScriptSignal,
+	onOpen: Signal,
+	onMinimized: Signal,
+	onMaximized: Signal,
 	onClose: () -> (boolean),
-	
+
 	SetContent: (f: Frame) -> (Frame),
 
 	Open: () -> (),
@@ -368,14 +401,14 @@ export type LithiumWindow = {
 
 	Minimize: () -> (),
 	Maximize: () -> (),
-	
+
 	Resize: (size: UDim2) -> (),
 
 	allowMinimizing: boolean,
 	allowMaximizing: boolean,
 	allowResizing: boolean,
 	allowUserClose: boolean,
-	
+
 	toolbars: { LithiumMenuToolbar },
 
 	__LITHIUMDATA: {},
@@ -467,58 +500,71 @@ local function CreateLithiumMenuToolbar(name: string): LithiumMenuToolbar
 		buttonUI.MouseButton1Click:Connect(function()
 			buttonObj.onClick()
 		end)
-		
+
 		return buttonObj
 	end
 
 	return toolbar
 end
 
+local function CreateTablist()
+	local TabFrame = Instance.new("Frame", script.Parent)
+
+	TabFrame.Size = UDim2.new(1, 0, 0, 30)
+	TabFrame.Position = UDim2.new(0, 0, 1, -30)
+	TabFrame.Transparency = 1
+
+	local UIListLayout = Instance.new("UIListLayout", TabFrame)
+	UIListLayout.FillDirection = Enum.FillDirection.Horizontal
+
+	return TabFrame
+end
+
 local function Minimize(window: LithiumWindow)
 	local data = window.__LITHIUMDATA
-	
+
 	if data.minimized or (not window.allowMinimizing) then return end
-	
-	window.onMinimized:__Call()
+
+	window.onMinimized:Fire()
 
 	local tab = CreateWMAssets.Tab()
 	tab.TitleText.Text = window.title
-	
+
 	window.__LITHIUMDATA.minTab = tab
-	
+
 	local txtSize = TextService:GetTextSize(window.title, tab.TitleText.TextSize, Enum.Font.Roboto, tab.TitleText.AbsoluteSize)
 	tab.Size = UDim2.fromOffset(txtSize.X + 20, 30)
-	
-	tab.Parent = script.Parent.Tabs or Instance.new("Frame", script.Parent)
+
+	tab.Parent = script.Parent:FindFirstChild("Tabs") or CreateTablist()
 	if tab.Parent.Name == "Frame" then tab.Parent.Name = "Tabs" end
 	tab.MouseButton1Click:Connect(window.Open)
-	
+
 	window.__LITHIUMDATA.window.Visible = false
 end
 
 local function Maximize(window: LithiumWindow)
 	if (not window.allowMaximizing) then return end
 
-	window.onMaximized:__Call()
-	
+	window.onMaximized:Fire()
+
 	if window.__LITHIUMDATA.maximized then
 		if window.__LITHIUMDATA.fpos and window.__LITHIUMDATA.fscale then
 			window.__LITHIUMDATA.window.Size = window.__LITHIUMDATA.fscale
 			window.__LITHIUMDATA.window.Position = window.__LITHIUMDATA.fpos
-			
+
 			window.__LITHIUMDATA.maximized = false
 		else
 			window.__LITHIUMDATA.window.Size = UDim2.fromOffset(400, 300)
 			window.__LITHIUMDATA.window.Position = UDim2.fromOffset(75, 75)
-			
+
 			window.__LITHIUMDATA.maximized = false
 		end
 	else
 		window.__LITHIUMDATA.maximized = true
-		
+
 		window.__LITHIUMDATA.fscale = window.__LITHIUMDATA.window.Size
 		window.__LITHIUMDATA.fpos = window.__LITHIUMDATA.window.Position
-		
+
 		window.__LITHIUMDATA.window.Size = UDim2.fromScale(1, 1)
 		window.__LITHIUMDATA.window.Position = UDim2.fromScale(0, 0)
 	end
@@ -532,63 +578,68 @@ end
 
 function LithiumWM.CreateWindow(windowTitle: string, openByDefault: boolean?, initWindowSize: UDim2?): LithiumWindow
 	local windowObj = CreateWMAssets.LithiumWindow()
-	
+
 	local window: LithiumWindow = {}
-	
+
 	window.title = windowTitle
 	window.open = if openByDefault ~= nil then openByDefault else true
-	
+
 	window.__LITHIUMDATA = {}
 	window.__LITHIUMDATA.window = windowObj
-	
+
 	window.__LITHIUMDATA.minimized = false
 	window.__LITHIUMDATA.maximized = false
 	window.__LITHIUMDATA.minTab = nil
-	
+
 	window.frame = windowObj.Content
-	
+
 	window.allowMinimizing = true
 	window.allowMaximizing = true
 	window.allowResizing = true
 	window.allowUserClose = true
 	
+	window.onMinimized = Signal.new()
+	window.onMaximized = Signal.new()
+	window.onOpen      = Signal.new()
+	window.onClose     = function() return true end -- placeholder fn
+
 	window.toolbars = {}
-	
+
 	window.Open = function()
 		window.__LITHIUMDATA.window.Visible = true
-		window.onOpen:__Call()
-		
+		window.onOpen:Fire()
+
 		if window.__LITHIUMDATA.minTab then
 			window.__LITHIUMDATA.minTab:Destroy()
 		end
 	end
-	
+
 	if not window.open then
 		Minimize(window)
 	end
-	
+
 	window.Minimize = function()
 		Minimize(window)
 	end
-	
+
 	window.Maximize = function()
 		Maximize(window)
 	end
-	
+
 	window.Close = function()
 		if window.onClose 
-		and typeof(window.onClose) == "function"
-		and window.onClose() ~= false then
+			and typeof(window.onClose) == "function"
+			and window.onClose() ~= false then
 			windowObj:Destroy()
 		end
 	end
-	
+
 	window.Resize = function(size: UDim2)
 		windowObj.Size = UDim2.new(
 			0, size.X.Offset or windowObj.Size.X.Offset,
 			0, size.Y.Offset or windowObj.Size.Y.Offset
 		)
-		
+
 		FixScalersPosition(windowObj)
 	end
 
@@ -600,54 +651,54 @@ function LithiumWM.CreateWindow(windowTitle: string, openByDefault: boolean?, in
 			quit = true
 			windowObj.ZIndex = 1
 		end)
-		
+
 		local c2 = UserInputService.InputBegan:Connect(function(i: InputObject, gpe: boolean)
 			if i.UserInputType == Enum.UserInputType.MouseButton1 and not gpe then
 				focusIt = true
 			end
 		end)
-		
+
 		while not quit do
 			if focusIt then
 				windowObj.ZIndex = 2
 				c1:Disconnect()
 				c2:Disconnect()
-				
+
 				break
 			end
-			
+
 			if quit then break end
-			
+
 			task.wait(0.05)
 		end
 	end)
-	
+
 	local updateBtns = coroutine.create(function()
 		local function disable(tb: TextButton)
 			tb.BackgroundTransparency = 0.75
 			tb.TextTransparency = 0.75
 			tb.Interactable = false
 		end
-		
+
 		local function enable(tb: TextButton)
 			tb.BackgroundTransparency = 0
 			tb.TextTransparency = 0
 			tb.Interactable = true
 		end
-		
+
 		while task.wait(0.1) do
 			if window.allowMinimizing then
 				enable(windowObj.Topbar.MinBtn)
 			else
 				disable(windowObj.Topbar.MinBtn)
 			end
-			
+
 			if window.allowMaximizing then
 				enable(windowObj.Topbar.MaxBtn)
 			else
 				disable(windowObj.Topbar.MaxBtn)
 			end
-			
+
 			if window.allowUserClose then
 				enable(windowObj.Topbar.CloseBtn)
 			else
@@ -655,12 +706,12 @@ function LithiumWM.CreateWindow(windowTitle: string, openByDefault: boolean?, in
 			end
 		end
 	end)
-	
+
 	coroutine.resume(updateBtns)
 	windowObj.Destroying:Once(function()
 		coroutine.close(updateBtns)
 	end)
-	
+
 	-- resizing stuff
 	windowObj.Scaling.CornerScalePoint.CornerScale.DragContinue:Connect(function(inputPos: Vector2)
 		if window.allowResizing then
@@ -668,21 +719,21 @@ function LithiumWM.CreateWindow(windowTitle: string, openByDefault: boolean?, in
 			window.Resize(sc)
 		end
 	end)
-	
+
 	windowObj.Scaling.XScale.Scaler.DragContinue:Connect(function(inputPos: Vector2)
 		if window.allowResizing then
 			local sc = UDim2.fromOffset(inputPos.X - windowObj.Position.X.Offset, windowObj.Size.Y.Offset)
 			window.Resize(sc)
 		end
 	end)
-	
+
 	windowObj.Scaling.YScale.Scaler.DragContinue:Connect(function(inputPos: Vector2)
 		if window.allowResizing then
 			local sc = UDim2.fromOffset(windowObj.Size.X.Offset, inputPos.Y - windowObj.Position.Y.Offset)
 			window.Resize(sc)
 		end
 	end)
-	
+
 	window.CreateToolbar = function(name: string): nil
 		if name:gsub(" ", "") == "" then -- invalid
 			return
@@ -722,29 +773,29 @@ function LithiumWM.CreateWindow(windowTitle: string, openByDefault: boolean?, in
 
 		return toolbar
 	end
-	
+
 	window.SetContent = function(f: Frame)
 		f.Parent = windowObj.Content
 		return f
 	end
-	
+
 	windowObj.Topbar.WindowTitle.Text = window.title
-	
+
 	local ts = TextService:GetTextSize(window.title, windowObj.Topbar.WindowTitle.TextSize, Enum.Font.Roboto, windowObj.Topbar.AbsoluteSize)
 	local tsXsize = ts.X + 15
-	
+
 	windowObj.Topbar.WindowTitle.Size = UDim2.fromOffset(tsXsize, 30)
 	windowObj.Topbar.MenuButtons.Position = UDim2.fromOffset(tsXsize, 0)
 	windowObj.Topbar.MenuButtons.Size = UDim2.new(1, -(tsXsize + 90), 0, 30)
-	
+
 	windowObj.Size = initWindowSize or UDim2.fromOffset(400, 300)
-	
+
 	windowObj.Topbar.MinBtn.MouseButton1Click:Connect(window.Minimize)
 	windowObj.Topbar.MaxBtn.MouseButton1Click:Connect(window.Maximize)
 	windowObj.Topbar.CloseBtn.MouseButton1Click:Connect(window.Close)
-	
+
 	windowObj.Parent = script.Parent
-	
+
 	return window
 end
 
