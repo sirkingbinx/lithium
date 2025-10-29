@@ -627,11 +627,16 @@ function LithiumWM.CreateWindow(windowTitle: string, openByDefault: boolean?, in
 	end
 
 	window.Close = function()
-		if window.onClose 
-			and typeof(window.onClose) == "function"
-			and window.onClose() ~= false then
-			windowObj:Destroy()
+		if (not window.onClose) or window.onClose() ~= false then
+			return
 		end
+
+		-- unbind events to stop script failures
+		window.onMinimized:Destroy()
+		window.onMaximized:Destroy()
+		window.onOpen:Destroy()
+
+		windowObj:Destroy()
 	end
 
 	window.Resize = function(size: UDim2)

@@ -45,22 +45,19 @@ Any UI elements included in LithiumWM are converted into code using the `Gui2Lua
 
 To generate the UI, edit the `.Parent` property of the generated object to where you want the UI to be created, then paste the code into your console (most commonly placed at the very bottom of your studio tab), and run the code.
 
-<h4 id="lithiumwm-implementation_details-lithiumscriptsignal">LithiumScriptSignal</h4>
+<h4 id="lithiumwm-implementation_details-signal">Signal</h4>
 
-LithiumScriptSignal is a loose replica of [RBXScriptSignal](https://create.roblox.com/docs/reference/engine/datatypes/RBXScriptSignal) used in event-like functions in LithiumWM.
+Signal itself is taken from [Nevermore](https://github.com/Quenty/NevermoreEngine), which is a faithful recreation of RBXScriptSignal.
 
-It's most commonly used in `LithiumWindow` where we use it to create `onOpen`, `onMinimize` and `onMaximize`.
-
-LithiumScriptSignal, unlike RBXScriptSignal, does not support returning arguments, so in those cases we just use `function` type syntax to let the user know we expect a return type. Here is an example with the `onClose` function:
+Here's a usage example, using `LithiumWindow` and the `onOpen` event.
 
 ```lua
--- This is placed in the LithiumWindow type
-onClose: () -> (boolean),
+local LithiumWM = require(script.LithiumWM)
+local Window = LithiumWM.CreateWindow("Open me", false) -- hide window at startup
 
--- And the user can define this
-myWindow.onClose = function()
-    return true -- let the window close (return false to keep it open)
-end,
+Window.onOpen:Connect(function()
+    print("boo")
+end)
 ```
 
 <h3 id="lithiumwm-usage">Usage</h3>
